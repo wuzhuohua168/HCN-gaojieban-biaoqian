@@ -427,12 +427,12 @@ function changeMonth(delta) {
 
 // --- 行情 ---
 function updateStockChart() {
-    const symbol = document.getElementById('stock-search').value || "300446";
+    const symbol = document.getElementById('stock-search').value || "BTCUSD";
     document.getElementById('stock-chart-container').innerHTML = '';
     new TradingView.widget({
         "autosize": true,
         "symbol": symbol,
-        "interval": "D",
+        "interval": "30",
         "timezone": "Etc/UTC",
         "theme": "light",
         "style": "1",
