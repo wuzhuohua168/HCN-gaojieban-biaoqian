@@ -427,7 +427,7 @@ function changeMonth(delta) {
 
 // --- 行情 ---
 function updateStockChart() {
-    const symbol = document.getElementById('stock-search').value || "BTCUSD";
+    const symbol = document.getElementById('stock-search').value || "ETHUSD";
     document.getElementById('stock-chart-container').innerHTML = '';
     new TradingView.widget({
         "autosize": true,
