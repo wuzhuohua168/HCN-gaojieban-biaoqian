@@ -2,420 +2,260 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HCN工作台5.0</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <title>智能货运费用生成系统 v3.8</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://s3.tradingview.com/tv.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
-    <script src="https://yubinbango.github.io/yubinbango/yubinbango.js" charset="UTF-8"></script>
-
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: #f0f3f7; font-family: -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root { --main-purple: #5d5bd4; --bg-gray: #f0f2f5; }
+        body { font-family: "PingFang SC", "Helvetica Neue", Arial, sans-serif; background: var(--bg-gray); margin: 0; padding: 20px; }
+
+        /* 配置面板 */
+        .config-panel { 
+            max-width: 1000px; 
+            margin: 0 auto 30px; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .config-header { grid-column: 1 / -1; border-bottom: 2px solid var(--bg-gray); padding-bottom: 10px; margin-bottom: 10px; }
+        .config-header h3 { margin: 0; color: var(--main-purple); }
+
+        .input-item label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #555; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        textarea { height: 100px; }
+
+        .action-area { grid-column: 1 / -1; display: flex; gap: 15px; margin-top: 10px; }
+        button { flex: 1; padding: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; color: white; transition: 0.2s; }
+        .btn-preview { background: var(--main-purple); }
+        .btn-pdf { background: #27ae60; }
+        .btn-csv { background: #2980b9; }
+
+        /* 预览区 - A4 比例 */
+        .report-container { display: flex; justify-content: center; padding-bottom: 50px; }
+        .report-wrap { 
+            width: 794px; 
+            background: white; 
+            padding: 60px 50px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15); 
+            box-sizing: border-box; 
+            min-height: 1123px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .report-content { flex-grow: 1; }
+        .report-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 30px; }
+        .brand { display: flex; align-items: center; justify-content: center; gap: 15px; }
+        .logo-img { width: 45px; height: 45px; }
+        .logo-img img { width: 100%; height: 100%; object-fit: contain; }
+        .company-cn { font-size: 26px; font-weight: bold; margin: 0; }
+        .company-en { font-size: 9.5px; font-weight: bold; letter-spacing: 0.5px; }
         
-        .tab-content { display: none; padding: 10px; flex: 1; overflow-y: auto; padding-bottom: 80px; }
-        .tab-content.active { display: block; }
-        #tab5 { padding: 0; overflow: hidden; }
+        .doc-name { text-align: center; font-size: 24px; font-weight: bold; margin: 40px 0; letter-spacing: 6px; text-decoration: underline; text-underline-offset: 10px; }
+        .meta-box { font-size: 14px; display: flex; justify-content: space-between; margin-bottom: 25px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; }
+        
+        .route-info { background: #f8f9ff; border-left: 5px solid var(--main-purple); padding: 15px 20px; margin-bottom: 30px; }
+        .route-title { font-size: 18px; font-weight: bold; display: block; margin-bottom: 5px; }
+        .route-detail { font-size: 13px; color: #666; }
 
-        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: #fff; display: flex; border-top: 1px solid #e0e0e0; z-index: 9999; }
-        .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8a8a8a; font-size: 10px; cursor: pointer; }
-        .tab-item.active { color: #4a90e2; font-weight: bold; }
-        .tab-icon { font-size: 20px; margin-bottom: 2px; }
+        .main-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; }
+        .main-table th { background: #f5f5f5; border: 1px solid #d0d0d0; padding: 12px 5px; font-size: 11px; }
+        .main-table td { border: 1px solid #d0d0d0; padding: 15px 5px; font-size: 12px; text-align: center; word-break: break-all; }
+        .sum-line { text-align: right; font-weight: bold; padding-right: 15px !important; }
 
-        .controls { max-width: 500px; margin: 0 auto 15px; background: #fff; padding: 18px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        .row { margin-bottom: 12px; }
-        label { font-size: 12px; font-weight: bold; color: #666; display: block; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; outline: none; background: #fff; }
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
-        .btn-main { padding: 12px 5px; border: none; border-radius: 8px; font-weight: bold; color: #fff; cursor: pointer; font-size: 13px; text-align: center; }
-        .btn-main:disabled { opacity: 0.7; cursor: not-allowed; }
+        .fee-table { width: 100%; border: 1px solid #000; margin-top: 20px; }
+        .fee-row { display: flex; border-bottom: 1px solid #000; }
+        .fee-row:last-child { border-bottom: none; }
+        .fee-head { width: 120px; background: #f5f5f5; padding: 15px; font-weight: bold; border-right: 1px solid #000; font-size: 14px; }
+        .fee-body { padding: 15px; flex: 1; font-size: 16px; }
 
-        .copyright-info { background: #FFD700; color: #333; padding: 10px; margin-top: 15px; font-size: 11px; border-radius: 8px; text-align: center; line-height: 1.4; border: 1px solid #DAA520; }
-
-        #container { margin: 15px auto; display: flex; flex-direction: column; align-items: center; }
-        .page-wrapper { background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin-bottom: 12px; overflow: hidden; position: relative; border: 0.1px solid #eee; }
-        .size-100-100 { width: 100mm; height: 100mm; }
-        .size-100-50 { width: 100mm; height: 50mm; }
-        .size-80-80 { width: 80mm; height: 80mm; }
-
-        .label-content { width: 100%; height: 100%; padding: 4mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
-        .header-mode { width: 100%; text-align: center; font-size: 18px; font-weight: bold; border-bottom: 2.5px solid #000; padding-bottom: 1.5mm; }
-        .big-qty { font-size: 32px; font-weight: 900; line-height: 1.1; }
-        .big-tracking { font-size: 18px; font-weight: 900; font-family: monospace; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 1.5mm 0; margin: 1.5mm 0; width: 100%; text-align: center; }
-        .code-area { width: 100%; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .barcode-img { max-width: 100%; height: auto; }
-        .qrcode-img { height: 100%; width: auto; max-height: 130px; }
-        .footer-made { width: 100%; border: 2px solid #000; text-align: center; font-size: 16px; font-weight: bold; padding: 1mm; }
-
-        .module-card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-        .title { font-size: 15px; font-weight: bold; margin-bottom: 10px; border-left: 4px solid #4a90e2; padding-left: 8px; }
-        .temp-big { font-size: 48px; font-weight: bold; text-align: center; color: #4a90e2; margin: 10px 0; }
-        .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .weather-item { background: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 13px; }
-
-        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #eee; }
-        .cal-cell { background: #fff; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; position: relative; cursor: pointer; }
-        .lunar-text { font-size: 10px; color: #999; margin-top: 2px; }
-        .weekend-text { color: #e74c3c; }
-        .event-dot { position: absolute; bottom: 4px; width: 4px; height: 4px; background: #4a90e2; border-radius: 50%; }
-        .today-circle { background: #4a90e2; color: #fff; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
-
-        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 20px; z-index: 10000; opacity: 0; transition: 0.3s; pointer-events: none; font-size: 13px; }
-        .toast.show { opacity: 1; top: 30px; }
+        .report-footer { text-align: center; margin-top: 50px; border-top: 1px solid #eee; padding-top: 15px; }
+        .footer-line-1 { font-size: 10px; color: #999; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .footer-line-2 { font-size: 9px; color: #bbb; }
     </style>
 </head>
 <body>
 
-<div id="tab1" class="tab-content active">
-    <div class="controls">
-        <div class="row">
-            <label>运输方式</label>
-            <select id="mode" onchange="toggleCustomMode()">
-                <option>大陆飞日本🇯🇵</option><option>香港飞日本🇯🇵</option><option>国际快递</option>
-                <option>普船海运GS</option><option>普船海运包税</option><option>快船包税</option>
-                <option>普船商业件</option><option>快船商业件</option><option>20呎整柜商业件</option>
-                <option>40呎整柜商业件</option><option>佐川小包</option><option>EMS快递</option>
-                <option>空运超大件</option> <option>海运超大件</option>
-                <option>食品届</option><option>食品专线</option>
-                <option>日本仓电池</option><option>日本🇯🇵回国</option>
-                <option>HCN Supply Chain (Shenzhen) Co., Ltd.</option>
-                <option value="CUSTOM">-- 手动输入 --</option>
-            </select>
-            <input type="text" id="custom-mode-input" placeholder="输入运输方式" style="display:none; margin-top:8px;">
-        </div>
-        <div style="display:flex; gap:10px;" class="row">
-            <div style="flex:1"><label>纸张格式</label><select id="label-size"><option value="size-100-100">100mm x 100mm</option><option value="size-100-50">100mm x 50mm</option><option value="size-80-80">80mm x 80mm</option></select></div>
-            <div style="flex:1"><label>码制类型</label><select id="code-type"><option value="BARCODE">条形码</option><option value="QRCODE">二维码</option></select></div>
-        </div>
-        <div style="display:flex; gap:10px;">
-            <div style="flex:1.5"><label>单号前缀</label><input type="text" id="prefix" value="HCN"></div>
-            <div style="flex:1"><label>总件数</label><input type="number" id="qty" value=" " min="1"></div>
-        </div>
-        <div class="btn-group">
-            <button class="btn-main" style="background:#4a90e2" onclick="handleGenerate()">1. 预览标签</button>
-            <button class="btn-main" style="background:#6c5ce7" onclick="copyInfo()">2. 复制信息</button>
-            <button class="btn-main" style="background:#28a745" id="btn-share" onclick="handleExportPDF()">3. 分享/下载 PDF</button>
-            <button class="btn-main" style="background:#f39c12" onclick="handleExportCSV()">4. 导出 CSV</button>
-        </div>
-        <div class="copyright-info">
-            <div style="font-weight:bold; color: #000;">© HCN Supply Chain (Shenzhen) Co., Ltd.</div>
-            <div>日本跨境物流联系📞 Joyhua 19867541192</div>
-        </div>
+<div class="config-panel">
+    <div class="config-header"><h3>1. 配置信息</h3></div>
+    <div class="input-item"><label>上传 Logo</label><input type="file" id="upLogo" accept="image/*"></div>
+    <div class="input-item"><label>公司中英名称</label>
+        <input type="text" id="inCn" value="合辰供应链（深圳）有限公司">
+        <input type="text" id="inEn" value="HCN SUPPLY CHAIN (SHENZHEN) CO., LTD." style="margin-top:5px">
     </div>
-    <div id="container"></div>
+    <div class="input-item"><label>客户名称</label><input type="text" id="inCust" placeholder="客户姓名"></div>
+    <div class="input-item"><label>运输方式</label><input type="text" id="inShip" value="空运"></div>
+    <div class="input-item"><label>智能识别信息</label><textarea id="inSmart" placeholder="在此粘贴单号等信息..."></textarea></div>
+    <div class="input-item"><label>表格备注 (含附加费)</label><input type="text" id="inTableNote" placeholder="例如：报关费100"></div>
+    <div class="input-item"><label>报价单价 (¥/kg)</label><input type="number" id="inPrice" value="35.00" step="0.01"></div>
+    
+    <div class="action-area">
+        <button class="btn-preview" onclick="doUpdate()">① 更新预览内容</button>
+        <button class="btn-pdf" onclick="processFile('pdf')">② 分享/下载 PDF</button>
+        <button class="btn-csv" onclick="processFile('csv')">③ 分享/下载 CSV</button>
+    </div>
 </div>
 
-<div id="tab2" class="tab-content">
-    <div class="module-card">
-        <div class="title">🌤️ 实时气象台</div>
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <input type="text" id="city-input" placeholder="城市拼音 (如: Shenzhen)" style="flex:1">
-            <button onclick="getRichWeather()" id="weather-btn" style="width:80px; background:#4a90e2; color:#fff; border-radius:8px; border:none;">查询</button>
-        </div>
-        <div id="weather-detail-box">
-            <div class="temp-big" id="w-temp">--°C</div>
-            <div id="w-desc" style="text-align:center; margin-bottom:15px; font-weight:bold; color:#666;">请输入城市</div>
-            <div class="weather-grid">
-                <div class="weather-item"><b>🌬️ 风速</b> <span id="w-wind">--</span></div>
-                <div class="weather-item"><b>💧 湿度</b> <span id="w-hum">--</span></div>
-                <div class="weather-item"><b>🌅 日出</b> <span id="w-sunr">--</span></div>
-                <div class="weather-item"><b>🌇 日落</b> <span id="w-suns">--</span></div>
+<div class="report-container">
+    <div class="report-wrap" id="capture-area">
+        <div class="report-content">
+            <div class="report-header">
+                <div class="brand">
+                    <div class="logo-img" id="outLogo">HCN</div>
+                    <div class="company-cn" id="outCn">合辰供应链（深圳）有限公司</div>
+                </div>
+                <div class="company-en" id="outEn">HCN SUPPLY CHAIN (SHENZHEN) CO., LTD.</div>
+            </div>
+            <h2 class="doc-name">货运费用确认单</h2>
+            <div class="meta-box">
+                <span><b>运单号：</b> <span id="outNo">-</span></span>
+                <span><b>日期：</b> <span id="outDate">-</span></span>
+            </div>
+            <div class="route-info">
+                <span class="route-title" id="outRoute">香港 → 日本</span>
+                <span class="route-detail" id="outDesc">运输方式：空运 | 客户：-</span>
+            </div>
+            <table class="main-table">
+                <thead>
+                    <tr>
+                        <th width="22%">单号</th>
+                        <th width="12%">体积(m³)</th>
+                        <th width="12%">重量(KG)</th>
+                        <th width="12%">计费重</th>
+                        <th width="8%">数量</th>
+                        <th width="14%">品名</th>
+                        <th width="20%">备注</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td>-</td><td>0.00</td><td>0.00</td><td>0.00</td><td>0</td><td>-</td><td>-</td></tr>
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="7" class="sum-line" id="outSum">汇总：0件 / 0.00kg</td></tr>
+                </tfoot>
+            </table>
+            <div class="fee-table">
+                <div class="fee-row"><div class="fee-head">收费单价</div><div class="fee-body" id="outUnitPrice">¥0.00 / kg</div></div>
+                <div class="fee-row"><div class="fee-head">应付合计</div><div class="fee-body" style="font-weight:bold; font-size:20px; color:#d63031;" id="outTotal">¥0.00</div></div>
             </div>
         </div>
-    </div>
-</div>
-
-<div id="tab3" class="tab-content">
-    <div class="module-card">
-        <div class="title">汇率转换</div>
-        <input type="number" id="val-left" value="1000" oninput="convertRate('left')" style="font-size:24px; text-align:center; margin-bottom:10px;">
-        <select id="cur-left" onchange="convertRate('left')" style="margin-bottom:15px;">
-            <option value="JPY" selected>JPY 日币</option><option value="USD">USD 美元</option><option value="EUR">EUR 欧元</option>
-            <option value="CNY">CNY 人民币</option><option value="AUD">AUD 澳元</option><option value="GBP">GBP 英镑</option>
-            <option value="NZD">NZD 纽元</option><option value="CAD">CAD 加元</option><option value="TWD">TWD 新台币</option>
-            <option value="HKD">HKD 港元</option><option value="KRW">KRW 韩元</option><option value="CHF">CHF 瑞士法郎</option>
-            <option value="THB">THB 泰铢</option><option value="SGD">SGD 新加坡元</option>
-        </select>
-        <div style="text-align:center; font-size:30px; color:#4a90e2; margin:10px 0;">⇅</div>
-        <input type="number" id="val-right" oninput="convertRate('right')" style="font-size:24px; text-align:center; margin-bottom:10px;">
-        <select id="cur-right" onchange="convertRate('right')">
-            <option value="CNY" selected>CNY 人民币</option><option value="USD">USD 美元</option><option value="EUR">EUR 欧元</option>
-            <option value="JPY">JPY 日元</option><option value="AUD">AUD 澳元</option><option value="GBP">GBP 英镑</option>
-            <option value="NZD">NZD 纽元</option><option value="CAD">CAD 加元</option><option value="TWD">TWD 新台币</option>
-            <option value="HKD">HKD 港元</option><option value="KRW">KRW 韩元</option><option value="CHF">CHF 瑞士法郎</option>
-            <option value="THB">THB 泰铢</option><option value="SGD">SGD 新加坡元</option>
-        </select>
-    </div>
-</div>
-
-<div id="tab4" class="tab-content">
-    <div class="module-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <button onclick="changeMonth(-1)" style="border:none; background:none; font-size:20px;">◀</button>
-            <div id="cal-month-title" style="font-weight:bold;"></div>
-            <button onclick="changeMonth(1)" style="border:none; background:none; font-size:20px;">▶</button>
-        </div>
-        <div class="cal-grid" id="calendar-grid"></div>
-        <div style="font-size: 11px; color:#999; margin-top:10px; text-align:center;">💡 点击日期添加备注，有备注日期显示圆点</div>
-    </div>
-</div>
-
-<div id="tab5" class="tab-content">
-    <div style="padding:10px; background:#fff; border-bottom:1px solid #eee; display:flex; gap:5px;">
-        <input type="text" id="stock-search" placeholder="BINANCE:BTCUSDT" style="flex:1">
-        <button onclick="updateStockChart()" style="background:#4a90e2; color:#fff; border:none; padding:0 15px; border-radius:8px;">查看</button>
-    </div>
-    <div id="stock-chart-container" style="width:100%; height: calc(100vh - 120px);"></div>
-</div>
-
-<div id="tab6" class="tab-content">
-    <div class="module-card h-adr">
-        <div class="title">📮 日本地址查询 (邮编)</div>
-        <span class="p-country-name" style="display:none;">Japan</span>
-        <div class="row">
-            <label>邮政区号 (7位数字自动查询)</label>
-            <input type="text" id="zip-jp" class="p-postal-code" placeholder="例：1000001">
-        </div>
-        <div class="row">
-            <label>都道府县</label>
-            <input type="text" id="region-jp" class="p-region" readonly>
-        </div>
-        <div class="row">
-            <label>市区町村</label>
-            <input type="text" id="locality-jp" class="p-locality" readonly>
-        </div>
-        <div class="row">
-            <label>详细街道</label>
-            <input type="text" id="street-jp" class="p-street-address">
-        </div>
-        <div class="btn-group">
-            <button class="btn-main" style="background:#27ae60; grid-column: span 2;" onclick="copyJpAddress()">复制完整地址</button>
+        <div class="report-footer">
+            <div class="footer-line-1">此运单由系统自动生成，如有疑问请联系客服或者业务。</div>
+            <div class="footer-line-2">生成时间：<span id="outGenAt">-</span></div>
         </div>
     </div>
 </div>
-
-<div class="tab-bar">
-    <div class="tab-item active" onclick="switchTab(1)"><span class="tab-icon">🏷️</span><span>标签</span></div>
-    <div class="tab-item" onclick="switchTab(2)"><span class="tab-icon">🌤️</span><span>天气</span></div>
-    <div class="tab-item" onclick="switchTab(3)"><span class="tab-icon">💴</span><span>汇率</span></div>
-    <div class="tab-item" onclick="switchTab(4)"><span class="tab-icon">📅</span><span>日历</span></div>
-    <div class="tab-item" onclick="switchTab(5)"><span class="tab-icon">📈</span><span>行情</span></div>
-    <div class="tab-item" onclick="switchTab(6)"><span class="tab-icon">📮</span><span>日本区号反查</span></div>
-</div>
-
-<div id="toast" class="toast">操作成功</div>
-<canvas id="temp-canvas" style="display:none;"></canvas>
-<div id="qr-gen-box" style="display:none;"></div>
 
 <script>
-let lastBatchData = null;
-let currDate = new Date();
-let rates = {};
-let memos = JSON.parse(localStorage.getItem('hcn_calendar_memos') || '{}');
+    let globalData = { cust: '客户', no: '单号', qty: 0 };
 
-window.onload = () => { initRates(); };
-
-function switchTab(idx) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
-    document.getElementById('tab' + idx).classList.add('active');
-    document.querySelectorAll('.tab-item')[idx-1].classList.add('active');
-    if(idx === 4) initCalendar();
-    if(idx === 5) setTimeout(updateStockChart, 100);
-}
-
-// 日本邮政复制功能
-function copyJpAddress() {
-    const zip = document.getElementById('zip-jp').value;
-    const region = document.getElementById('region-jp').value;
-    const locality = document.getElementById('locality-jp').value;
-    const street = document.getElementById('street-jp').value;
-    if (!region) { showToast("请先输入有效邮编"); return; }
-    const full = `〒${zip} ${region}${locality}${street}`;
-    navigator.clipboard.writeText(full).then(() => showToast("地址已复制"));
-}
-
-function toggleCustomMode() {
-    const isCustom = document.getElementById('mode').value === "CUSTOM";
-    document.getElementById('custom-mode-input').style.display = isCustom ? "block" : "none";
-}
-
-function handleGenerate() {
-    const qty = parseInt(document.getElementById('qty').value) || 1;
-    const prefix = document.getElementById('prefix').value || "HCN";
-    const modeSelect = document.getElementById('mode');
-    const modeText = (modeSelect.value === "CUSTOM") ? document.getElementById('custom-mode-input').value : modeSelect.options[modeSelect.selectedIndex].text;
-    const sizeClass = document.getElementById('label-size').value;
-    const codeType = document.getElementById('code-type').value;
-    const container = document.getElementById('container');
-    container.innerHTML = '';
-    
-    const now = new Date();
-    const dateKey = now.toISOString().slice(2,10).replace(/-/g,'');
-    const randomSuffix = Math.floor(Math.random() * 900 + 100);
-    const mainTracking = `${prefix}${dateKey}${randomSuffix}`;
-    lastBatchData = { mode: modeText, mainTracking: mainTracking, total: qty, date: now.toLocaleDateString(), size: sizeClass };
-
-    for(let i=1; i<=qty; i++) {
-        const displayLabel = `${i} / ${qty}`;
-        const trackingWithCounter = `${mainTracking}-${i}`;
-        const codeContent = `${trackingWithCounter} | ${displayLabel}`;
-        const wrapper = document.createElement('div');
-        wrapper.className = `page-wrapper ${sizeClass}`;
-        
-        let codeDataUrl = '';
-        if(codeType === 'BARCODE') {
-            const tempCanvas = document.getElementById('temp-canvas');
-            JsBarcode(tempCanvas, codeContent, { format: "CODE128", width: 1.8, height: 70, displayValue: false, margin: 0 });
-            codeDataUrl = tempCanvas.toDataURL('image/png');
-        } else {
-            const qrBox = document.getElementById('qr-gen-box');
-            qrBox.innerHTML = '';
-            new QRCode(qrBox, { text: codeContent, width: 250, height: 250, correctLevel: QRCode.CorrectLevel.M });
-            codeDataUrl = qrBox.querySelector('canvas').toDataURL('image/png');
+    document.getElementById('upLogo').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => { document.getElementById('outLogo').innerHTML = `<img src="${ev.target.result}">`; };
+            reader.readAsDataURL(file);
         }
+    };
 
-        wrapper.innerHTML = `<div class="label-content"><div class="header-mode">${modeText}</div><div style="text-align:center"><div class="big-qty">${displayLabel}</div><div class="big-tracking">${trackingWithCounter}</div></div><div class="code-area"><img src="${codeDataUrl}" class="${codeType==='BARCODE'?'barcode-img':'qrcode-img'}"></div><div class="footer-made">MADE IN CHINA</div></div>`;
-        container.appendChild(wrapper);
-    }
-    showToast("预览已生成");
-}
-
-async function handleExportPDF() {
-    const pages = document.querySelectorAll('.page-wrapper');
-    if(pages.length === 0) return alert("请先生成预览");
-    const btn = document.getElementById('btn-share');
-    const oldTxt = btn.innerText;
-    btn.innerText = "正在渲染PDF...";
-    btn.disabled = true;
-    const dims = { 'size-100-100': [100, 100], 'size-100-50': [100, 50], 'size-80-80': [80, 80] }[lastBatchData.size];
-    try {
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ unit: 'mm', format: dims, compress: true });
-        for (let i = 0; i < pages.length; i++) {
-            const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, logging: false });
-            if (i > 0) pdf.addPage(dims);
-            pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, dims[0], dims[1], undefined, 'FAST');
-        }
-        const fileName = `${lastBatchData.mode}_${lastBatchData.mainTracking}.pdf`;
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile && navigator.canShare) {
-            const pdfBlob = pdf.output('blob');
-            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-            await navigator.share({ files: [file], title: 'HCN标签' }).catch(() => pdf.save(fileName));
-        } else { pdf.save(fileName); }
-    } catch (err) { alert("PDF生成失败"); }
-    finally { btn.innerText = oldTxt; btn.disabled = false; }
-}
-
-function handleExportCSV() {
-    if(!lastBatchData) return alert("请先生成预览");
-    const header = "运输方式,主单号,总件数,日期\n";
-    const content = `"${lastBatchData.mode}","${lastBatchData.mainTracking}",${lastBatchData.total},"${lastBatchData.date}"`;
-    const csvBlob = new Blob(["\ufeff" + header + content], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(csvBlob);
-    link.download = `${lastBatchData.mainTracking}.csv`;
-    link.click();
-    showToast("CSV已导出");
-}
-
-function copyInfo() {
-    if(!lastBatchData) return alert("请先生成预览");
-    const info = `日期: ${lastBatchData.date}\n单号: ${lastBatchData.mainTracking}\n件数: ${lastBatchData.total}件\n运输: ${lastBatchData.mode}`;
-    navigator.clipboard.writeText(info).then(() => showToast("信息已复制"));
-}
-
-async function initRates() {
-    try {
-        const res = await fetch('https://open.er-api.com/v6/latest/USD');
-        const data = await res.json();
-        if(data && data.rates) { rates = data.rates; convertRate('left'); }
-    } catch(e) {}
-}
-
-function convertRate(dir) {
-    if(!rates.USD) return;
-    const from = document.getElementById('cur-left').value;
-    const to = document.getElementById('cur-right').value;
-    const l = document.getElementById('val-left'), r = document.getElementById('val-right');
-    if(dir === 'left') r.value = (l.value / rates[from] * rates[to]).toFixed(2);
-    else l.value = (r.value / rates[to] * rates[from]).toFixed(2);
-}
-
-async function getRichWeather() {
-    const city = document.getElementById('city-input').value.trim() || 'Shenzhen';
-    try {
-        const res = await fetch(`https://wttr.in/${city}?format=j1`);
-        const data = await res.json();
-        const cur = data.current_condition[0];
-        document.getElementById('w-temp').innerText = `${cur.temp_C}°C`;
-        document.getElementById('w-desc').innerText = `${city} · ${cur.weatherDesc[0].value}`;
-        document.getElementById('w-wind').innerText = `${cur.windspeedKmph} km/h`;
-        document.getElementById('w-hum').innerText = `${cur.humidity}%`;
-        document.getElementById('w-sunr').innerText = cur.astronomy[0].sunrise;
-        document.getElementById('w-suns').innerText = cur.astronomy[0].sunset;
-    } catch (e) { alert("查询失败"); }
-}
-
-function initCalendar() {
-    const grid = document.getElementById('calendar-grid');
-    grid.innerHTML = '';
-    const year = currDate.getFullYear(), month = currDate.getMonth();
-    document.getElementById('cal-month-title').innerText = `${year}年 ${month + 1}月`;
-    ['日','一','二','三','四','五','六'].forEach((label, i) => {
-        const colorClass = (i === 0 || i === 6) ? 'weekend-text' : '';
-        grid.innerHTML += `<div class="cal-cell ${colorClass}" style="font-weight:bold;background:#f8f9fa;height:35px">${label}</div>`;
-    });
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-cell"></div>`;
-    for(let d=1; d<=daysInMonth; d++) {
-        const dateKey = `${year}-${month+1}-${d}`;
-        const dayOfWeek = new Date(year, month, d).getDay();
-        const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
-        const lunarDate = Lunar.fromDate(new Date(year, month, d));
-        let lunarTxt = lunarDate.getJieQi() || lunarDate.getDayInChinese();
-        if(lunarTxt === '初一') lunarTxt = lunarDate.getMonthInChinese() + '月';
+    function doUpdate() {
+        const text = document.getElementById('inSmart').value;
+        const price = parseFloat(document.getElementById('inPrice').value) || 0;
+        const tableNote = document.getElementById('inTableNote').value || "-";
         
-        const cell = document.createElement('div');
-        cell.className = `cal-cell ${ (dayOfWeek===0||dayOfWeek===6)?'weekend-text':'' }`;
-        let content = isToday ? `<div class="today-circle">${d}</div>` : `<span>${d}</span>`;
-        content += `<div class="lunar-text">${lunarTxt}</div>`;
-        if(memos[dateKey]) content += `<div class="event-dot"></div>`;
-        cell.innerHTML = content;
-        cell.onclick = () => {
-            const n = prompt(`${dateKey} 备注：`, memos[dateKey] || "");
-            if(n !== null) { 
-                if(n.trim()==="") delete memos[dateKey]; else memos[dateKey]=n;
-                localStorage.setItem('hcn_calendar_memos', JSON.stringify(memos)); 
-                initCalendar(); 
-            }
+        const orderNo = (text.match(/(?:HET|SHIP-|单号)[:：]?\s*([A-Z0-9\-]+)/i) || ["", "未识别"])[1];
+        const billWeight = parseFloat((text.match(/(?:计费重|计费重量)[:：]?\s*(\d+(\.\d+)?)/) || ["", 0])[1]);
+        const actWeight = parseFloat((text.match(/(?:实际重量|重量)[:：]?\s*(\d+(\.\d+)?)/) || ["", 0])[1]);
+        const volume = (text.match(/(?:体积|实际体积)[:：]?\s*(\d+(\.\d+)?)/) || ["", "0.00"])[1];
+        const qty = parseInt((text.match(/(?:件数[:：]\s*|==)(\d+)/) || ["", 0])[1]);
+        const product = (text.match(/(?:品名[:：]\s*)(\S+)/) || ["", "未识别"])[1];
+        const route = (text.match(/(大陆|香港|深圳).*?(日本|美国|欧洲|英国)/) || ["", "香港", "日本"]);
+
+        let extraFee = 0;
+        const feeMatch = tableNote.match(/\d+(\.\d+)?/);
+        if (feeMatch) extraFee = parseFloat(feeMatch[0]);
+        const total = (billWeight * price) + extraFee;
+
+        globalData = { 
+            cust: document.getElementById('inCust').value || "客户", 
+            no: orderNo, 
+            vol: volume, 
+            actW: actWeight.toFixed(2), 
+            billW: billWeight.toFixed(2), 
+            qty: qty, 
+            pro: product, 
+            note: tableNote,
+            price: price.toFixed(2),
+            total: total.toLocaleString('zh-CN', {minimumFractionDigits: 2})
         };
-        grid.appendChild(cell);
+
+        document.getElementById('outNo').innerText = orderNo;
+        document.getElementById('outDate').innerText = new Date().toLocaleDateString('zh-CN');
+        document.getElementById('outRoute').innerText = `${route[1]} → ${route[2]}`;
+        document.getElementById('outDesc').innerText = `运输方式：${document.getElementById('inShip').value} | 客户：${globalData.cust}`;
+        document.getElementById('tableBody').innerHTML = `<tr><td>${orderNo}</td><td>${volume}</td><td>${actWeight.toFixed(2)}</td><td>${billWeight.toFixed(2)}</td><td>${qty}</td><td>${product}</td><td>${tableNote}</td></tr>`;
+        document.getElementById('outSum').innerText = `汇总：${qty}件 / ${billWeight.toFixed(2)}kg`;
+        document.getElementById('outUnitPrice').innerText = `¥${price.toFixed(2)} / kg`;
+        document.getElementById('outTotal').innerText = `¥${globalData.total}`;
+        document.getElementById('outGenAt').innerText = new Date().toLocaleString();
     }
-}
-function changeMonth(delta) { currDate.setMonth(currDate.getMonth() + delta); initCalendar(); }
 
-function updateStockChart() {
-    const symbol = document.getElementById('stock-search').value || "300446";
-    document.getElementById('stock-chart-container').innerHTML = '';
-    new TradingView.widget({
-        "autosize": true, "symbol": symbol, "interval": "D", "timezone": "Etc/UTC", "theme": "light",
-        "style": "1", "locale": "zh_CN", "container_id": "stock-chart-container",
-        "studies": ["RSI@tv-basicstudies"]
-    });
-}
+    async function processFile(type) {
+        if (!globalData.no || globalData.no === '单号') { alert("请先更新预览"); return; }
+        
+        const d = new Date();
+        const dateStr = `${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getDate().toString().padStart(2,'0')}`;
+        // 文件名规则恢复
+        const fileName = `${globalData.cust}_${globalData.no}_${globalData.qty}件_报价单_${dateStr}.${type}`;
+        
+        let blob;
+        if (type === 'pdf') {
+            const element = document.getElementById('capture-area');
+            const canvas = await html2canvas(element, { scale: 2.5, useCORS: true });
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = (canvas.height * pageWidth) / canvas.width;
+            pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
+            blob = pdf.output('blob');
+        } else {
+            const csvRows = [
+                ["客户名称", "运单号", "体积(m3)", "重量(kg)", "计费重(kg)", "件数", "品名", "备注", "单价", "总计(元)"],
+                [globalData.cust, globalData.no, globalData.vol, globalData.actW, globalData.billW, globalData.qty, globalData.pro, globalData.note, globalData.price, globalData.total]
+            ];
+            const csvString = "\ufeff" + csvRows.map(row => row.map(v => `"${v}"`).join(",")).join("\n");
+            blob = new Blob([csvString], { type: "text/csv;charset=utf-8" });
+        }
 
-function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.innerText = msg; t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2000);
-}
+        const file = new File([blob], fileName, { type: blob.type });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: fileName });
+            } catch (err) {
+                if (err.name !== 'AbortError') downloadLocal(blob, fileName);
+            }
+        } else {
+            downloadLocal(blob, fileName);
+        }
+    }
+
+    function downloadLocal(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 </script>
+
 </body>
 </html>
