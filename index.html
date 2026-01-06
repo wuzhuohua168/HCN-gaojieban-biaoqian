@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>智能货运费用生成系统 v3.8</title>
+    <title>智能货运费用生成系统 v3.9</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -88,10 +88,11 @@
         <input type="text" id="inEn" value="HCN SUPPLY CHAIN (SHENZHEN) CO., LTD." style="margin-top:5px">
     </div>
     <div class="input-item"><label>客户名称</label><input type="text" id="inCust" placeholder="客户姓名"></div>
+    <div class="input-item"><label>路线设置 (例如: 出发 → 目的地)</label><input type="text" id="inRoute" value="中国🇨🇳 → 日本🇯🇵"></div>
     <div class="input-item"><label>运输方式</label><input type="text" id="inShip" value="空运"></div>
     <div class="input-item"><label>智能识别信息</label><textarea id="inSmart" placeholder="在此粘贴单号等信息..."></textarea></div>
     <div class="input-item"><label>表格备注 (含附加费)</label><input type="text" id="inTableNote" placeholder="例如：报关费100"></div>
-    <div class="input-item"><label>报价单价 (¥/kg)</label><input type="number" id="inPrice" value=" " step="0.01"></div>
+    <div class="input-item"><label>报价单价 (¥/kg)</label><input type="number" id="inPrice" value="" step="0.01"></div>
     
     <div class="action-area">
         <button class="btn-preview" onclick="doUpdate()">① 更新预览内容</button>
@@ -116,7 +117,7 @@
                 <span><b>日期：</b> <span id="outDate">-</span></span>
             </div>
             <div class="route-info">
-                <span class="route-title" id="outRoute">中国 → 日本</span>
+                <span class="route-title" id="outRoute">中国🇨🇳 → 日本🇯🇵</span>
                 <span class="route-detail" id="outDesc">运输方式：空运 | 客户：-</span>
             </div>
             <table class="main-table">
@@ -166,6 +167,7 @@
         const text = document.getElementById('inSmart').value;
         const price = parseFloat(document.getElementById('inPrice').value) || 0;
         const tableNote = document.getElementById('inTableNote').value || "-";
+        const customRoute = document.getElementById('inRoute').value || "未填写路线";
         
         const orderNo = (text.match(/(?:HET|SHIP-|单号)[:：]?\s*([A-Z0-9\-]+)/i) || ["", "未识别"])[1];
         const billWeight = parseFloat((text.match(/(?:计费重|计费重量)[:：]?\s*(\d+(\.\d+)?)/) || ["", 0])[1]);
@@ -173,7 +175,6 @@
         const volume = (text.match(/(?:体积|实际体积)[:：]?\s*(\d+(\.\d+)?)/) || ["", "0.00"])[1];
         const qty = parseInt((text.match(/(?:件数[:：]\s*|==)(\d+)/) || ["", 0])[1]);
         const product = (text.match(/(?:品名[:：]\s*)(\S+)/) || ["", "未识别"])[1];
-        const route = (text.match(/(大陆|香港|深圳).*?(日本|美国|欧洲|英国)/) || ["", "香港", "日本"]);
 
         let extraFee = 0;
         const feeMatch = tableNote.match(/\d+(\.\d+)?/);
@@ -193,9 +194,15 @@
             total: total.toLocaleString('zh-CN', {minimumFractionDigits: 2})
         };
 
+        // 更新预览内容
+        document.getElementById('outCn').innerText = document.getElementById('inCn').value;
+        document.getElementById('outEn').innerText = document.getElementById('inEn').value;
         document.getElementById('outNo').innerText = orderNo;
         document.getElementById('outDate').innerText = new Date().toLocaleDateString('zh-CN');
-        document.getElementById('outRoute').innerText = `${route[1]} → ${route[2]}`;
+        
+        // 更新路线为用户输入的内容
+        document.getElementById('outRoute').innerText = customRoute;
+        
         document.getElementById('outDesc').innerText = `运输方式：${document.getElementById('inShip').value} | 客户：${globalData.cust}`;
         document.getElementById('tableBody').innerHTML = `<tr><td>${orderNo}</td><td>${volume}</td><td>${actWeight.toFixed(2)}</td><td>${billWeight.toFixed(2)}</td><td>${qty}</td><td>${product}</td><td>${tableNote}</td></tr>`;
         document.getElementById('outSum').innerText = `汇总：${qty}件 / ${billWeight.toFixed(2)}kg`;
@@ -205,11 +212,10 @@
     }
 
     async function processFile(type) {
-        if (!globalData.no || globalData.no === '单号') { alert("请先更新预览"); return; }
+        if (!globalData.no || globalData.no === '单号') { alert("请先点击【更新预览内容】"); return; }
         
         const d = new Date();
         const dateStr = `${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getDate().toString().padStart(2,'0')}`;
-        // 文件名规则恢复
         const fileName = `${globalData.cust}_${globalData.no}_${globalData.qty}件_报价单_${dateStr}.${type}`;
         
         let blob;
